@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Research pipeline outputs (large, gitignore results dir)
+.sixth/skills/research/results/
+*.json.bak
+
+# Keep skill validation script
+!.sixth/skills/research/validate_json.py
