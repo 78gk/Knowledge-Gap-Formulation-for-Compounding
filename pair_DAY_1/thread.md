@@ -50,9 +50,9 @@ Also: the stable block must be a constant string — same bytes, every call.
 
 **Tweet 6 (link):**
 Full explainer with working code + cache hit measurements:
-INSERT_BLOG_URL
+https://kirubel860202.substack.com/p/why-your-llm-agent-pays-full-prompt
 
 Covers: KV cache vs prefix cache, why mixing breaks reuse, the serialization trap, and the multi-block cache pattern for complex agents.
 
 ---
-*Replace INSERT_BLOG_URL before publishing.*
+*Replace https://kirubel860202.substack.com/p/why-your-llm-agent-pays-full-prompt before publishing.*

@@ -1,5 +1,5 @@
 # Week 12 — Knowledge Gap Formulation
-**Author:** [Your name]
+**Author:** Kirubel Tewodros
 **Program:** 10Academy Forward-Deployed Engineer, Week 12
 **Submission deadline:** Saturday 2026-05-09, 21hr UTC
 
@@ -41,7 +41,7 @@ Each `pair_DAY_N/` folder contains:
 ### Blog Posts
 | Day | Topic | URL |
 |-----|-------|-----|
-| 1 | [topic] | [URL — fill after publishing] |
+| 1 | Inference-time mechanics — KV cache & prefix caching | https://kirubel860202.substack.com/p/why-your-llm-agent-pays-full-prompt |
 | 2 | [topic] | [URL] |
 | 3 | [topic] | [URL] |
 | 4 | [topic] | [URL] |
@@ -50,7 +50,7 @@ Each `pair_DAY_N/` folder contains:
 ### Tweet Threads
 | Day | Topic | URL |
 |-----|-------|-----|
-| 1 | [topic] | [URL — fill after publishing] |
+| 1 | Inference-time mechanics — KV cache & prefix caching | [URL — post thread and add here] |
 | 2 | [topic] | [URL] |
 | 3 | [topic] | [URL] |
 | 4 | [topic] | [URL] |
