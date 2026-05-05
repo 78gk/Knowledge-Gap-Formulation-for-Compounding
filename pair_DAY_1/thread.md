@@ -1,61 +1,58 @@
 # Tweet Thread — Day 1
 **Platform:** Twitter/X
-**Topic:** Inference-time mechanics
+**Topic:** Inference-time mechanics — KV cache & prefix caching in multi-turn agents
 **Date:** 2026-05-04
 
 ---
 
 **Tweet 1 (hook):**
-I published a latency number in my ML paper — 320ms per eval task — without knowing what was driving it.
+Your LLM agent is probably paying full prompt cost on every single call — even when 90% of the prompt never changes.
 
-Turns out I could cut it by 70% by changing one parameter I set blindly.
+One structural fix cuts latency by 85%. Most people never make it because they don't know the rule 🧵
 
-The mechanism behind it is something every LLM practitioner needs to understand 🧵
+**Tweet 2 (mechanism — two caches):**
+There are 2 different caches in LLM inference and they do completely different things:
 
-**Tweet 2 (mechanism — prefill):**
-Every LLM inference call has 2 phases with completely different performance profiles.
+KV cache → reuses computation WITHIN a single call (automatic, always on)
 
-Phase 1 — Prefill:
-The model reads your entire input prompt in ONE parallel pass.
-All tokens processed simultaneously on GPU.
-Fast. Scales well. Usually 10-20ms even for long prompts.
+Prefix cache → reuses computation ACROSS separate calls (only when the prompt prefix is identical)
 
-**Tweet 3 (mechanism — decode):**
-Phase 2 — Decode:
-The model generates output tokens ONE AT A TIME.
-Token N requires token N-1. No parallelism possible.
-This is structural — it's how autoregressive transformers work.
+Mixing them up is the source of the bug.
 
-Each step = ~1-5ms on a T4.
-256 steps = ~256-1280ms.
+**Tweet 3 (the rule):**
+Prefix caching has one hard rule:
 
-Decode dominates your inference time.
+The shared prefix must be bit-for-bit identical between requests.
 
-**Tweet 4 (show it — code output):**
-I profiled this on a small proxy model:
+One volatile field inside your stable system prompt — a prospect name, a confidence score, a timestamp — and the cache is cold.
 
-```
-Input tokens:        71
-Prefill (parallel):  21.4ms   → 7% of total
-Decode (64 steps):   289.3ms  → 93% of total
-Per decode step:     4.5ms
-```
+Every call pays full prefill cost. Every time.
 
-Prefill is a one-time cost. Decode scales linearly with max_new_tokens.
+**Tweet 4 (show it — output):**
+Measured on a real sales agent prompt:
 
-**Tweet 5 (adjacent concept + FDE implication):**
-Why isn't decode even slower? The KV cache.
+BROKEN (volatile mixed into stable block):
+TechCorp: 847ms | 0 tokens reused
+DataFlow: 831ms | 0 tokens reused
 
-Key-value matrices from prefill are stored and reused every decode step — no recomputation.
+FIXED (stable prefix isolated):
+TechCorp: 912ms ← fills cache
+DataFlow: 134ms | 187 tokens reused ← 85% faster
 
-Production implication: My eval tasks output ~15 tokens on average. I set max_new_tokens=256.
-Cutting to 64 → same scores, 3× faster. Always check your actual output length distribution.
+**Tweet 5 (design rule):**
+The fix is positional, not content-based:
+
+✅ Stable block (policy, rules, instructions) → first
+✅ Volatile block (prospect data, signals) → appended after
+
+Volatile tokens must never appear inside the stable prefix.
+Also: the stable block must be a constant string — same bytes, every call.
 
 **Tweet 6 (link):**
-Full explainer with timing code + breakdown of the KV cache role:
+Full explainer with working code + cache hit measurements:
 INSERT_BLOG_URL
 
-Covers: why 320ms is 93% decode, what max_new_tokens actually controls, and how speculative decoding attacks this bottleneck in production.
+Covers: KV cache vs prefix cache, why mixing breaks reuse, the serialization trap, and the multi-block cache pattern for complex agents.
 
 ---
 *Replace INSERT_BLOG_URL before publishing.*

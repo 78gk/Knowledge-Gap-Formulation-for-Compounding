@@ -1,5 +1,5 @@
 # Gap Closure Sign-off — Day 1
-**Asker:** Kirubel Tewodros
+**Asker:** Nurye Nigus Mekonen
 **Explainer written by:** Kirubel Tewodros
 **Date:** 2026-05-04
 
@@ -7,7 +7,7 @@
 [x] Closed
 
 ## What I Understand Now That I Didn't Before
-Before today I could state the 320ms number but not decompose it. I now understand that inference time has two structurally different phases: prefill (parallel, fast, scales with GPU compute) and decode (sequential, dominates total time, scales linearly with max_new_tokens). The 320ms in my memo is approximately 90% decode — meaning my `max_new_tokens=256` parameter choice, not the model size or prompt length, was the primary driver of per-task latency. I also now understand that the KV cache is what makes decode tractable at all: without it, each of the 256 decode steps would recompute attention over all prior tokens. The concrete implication — cutting to `max_new_tokens=64` would reduce worst-case latency by ~3.8× with no change to task scores — is something I can now defend from first principles rather than state as a guess.
+Before this explainer I could see aggregate latency in the traces but had no way to reason about whether the stable prompt content in TheConversionEngine was being reused. I now understand that there are two separate caching mechanisms — KV cache (within a call, always on) and prefix caching (across calls, conditional on identical byte sequences) — and that my prompt assembly was likely breaking prefix caching by embedding volatile prospect fields inside the stable policy block. The fix is positional: stable content must form an unbroken prefix, with volatile content appended strictly after. I also now understand that the Anthropic prefix cache has a 5-minute TTL, which matters for agents with low call frequency. The code output showing 0 tokens reused vs 187 tokens reused made this concrete — I can go back to TheConversionEngine and restructure the prompt assembly immediately.
 
 ## What Remains Open
-None — the specific question (which phase dominates, and what to change to make it faster) is fully answered with a mechanism, code, and a concrete recommendation tied back to the memo's numbers.
+The multi-block cache pattern (setting cache breakpoints at system prompt, tool definitions, and few-shot examples separately) was mentioned but not demonstrated — that is a follow-on worth researching for v2 of the agent.

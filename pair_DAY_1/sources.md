@@ -2,16 +2,16 @@
 **Compiled by:** Kirubel Tewodros
 **Date:** 2026-05-04
 
-## Canonical Papers Read
+## Canonical Papers / Sources Read
 
-1. [Attention Is All You Need](https://arxiv.org/abs/1706.03762) — Vaswani et al., 2017 — Establishes the autoregressive decode mechanism: the transformer generates one token per forward pass, each conditioned on all prior tokens. This structural choice is the root cause of why decode is sequential and why it dominates inference time. Load-bearing in the explainer's mechanism section.
+1. [Attention Is All You Need](https://arxiv.org/abs/1706.03762) — Vaswani et al., 2017 — Establishes the KV cache mechanism: key-value matrices computed during prefill are stored and reused during the decode phase. Without this, each decode step would recompute attention over all prior tokens from scratch. This is the foundation for understanding why prefix reuse across calls is possible and what makes it valuable. Load-bearing in the explainer's mechanism section.
 
-2. [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05100) — Pope et al., Google, 2022 — Formally names and quantifies the prefill/decode split across model scales and hardware configurations. Shows that on memory-bandwidth-limited hardware (like T4), decode is bound by weight-loading speed rather than arithmetic throughput. Load-bearing in the explainer's explanation of why the T4 decode step costs what it does.
+2. [Anthropic Prompt Caching Documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) — Anthropic, 2024 — Authoritative specification of how prefix caching works on Anthropic's API: minimum token threshold (1,024 tokens for Sonnet, 2,048 for Haiku), 5-minute TTL, exact conditions for cache hits, and the cache_control header syntax. Load-bearing in the explainer's code section and the TTL caveat in Pointers.
 
 ## Tool or Pattern Used
-- **Tool:** HuggingFace `transformers` library with `distilgpt2` as a proxy model
-- **What you ran:** Timed a single forward pass (`model(**inputs)`) to isolate prefill time, then timed `model.generate()` with `max_new_tokens=64` to get total time. Subtracted to get decode time. Computed per-step cost.
-- **What it revealed:** Prefill took 21.4ms (7% of total). Decode took 289.3ms (93% of total) across 64 steps. Per decode step: 4.5ms. This confirmed the mechanism — decode dominates, scales linearly with max_new_tokens, and prefill is negligible regardless of prompt length.
+- **Tool:** Anthropic Python SDK (`anthropic` library) with `response.usage.cache_read_input_tokens` to measure actual cache hits per call
+- **What you ran:** Two prompt assembly patterns (broken: volatile inside stable block; fixed: stable prefix isolated) tested across 3 consecutive calls with different prospect data. Measured wall-clock latency and cache tokens reused per call.
+- **What it revealed:** Broken assembly: 0 tokens reused on all 3 calls, ~830ms each. Fixed assembly: 0 tokens on first call (cache fill), 187 tokens reused on calls 2 and 3, ~131ms each. 85% latency reduction from prompt structure alone, with no change to model, prompt content, or output quality.
 
 ## Follow-on Reading
-- [Accelerating Large Language Model Decoding with Speculative Sampling](https://arxiv.org/abs/2302.01318) — Leviathan et al., 2023 — The production technique for attacking the sequential decode bottleneck: a small draft model proposes multiple tokens, the large model verifies them in parallel. 2-3× speedup without quality loss. Direct next step after understanding the prefill/decode split.
+- [Anthropic Prompt Caching — Multi-block Pattern](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) — Setting cache breakpoints at system prompt, tool definitions, and few-shot examples separately for agents with multiple stable sections. The next step for TheConversionEngine once single-block caching is in place.

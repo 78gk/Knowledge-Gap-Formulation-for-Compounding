@@ -3,14 +3,15 @@
 **Date:** 2026-05-04
 
 ## Feedback Kirubel Gave Nurye on Nurye's Explainer
-The explainer answered the question but the code block showed the mechanism without showing the output — a reader couldn't verify the claim without running it themselves. The tweet thread's third tweet assumed the reader already understood what "sequential" meant in the context of token generation, which broke the standalone requirement. Suggested adding one sentence in tweet 3 to define why each token must wait for the previous one.
+The explainer correctly identified that stable and volatile content must be separated, but did not show what "broken" actually looks like in the code — only the solution was demonstrated. A reader coming in cold would not see the failure mode concretely, only the fix. Also, the explanation of why byte-identical matters (the provider hashes the prefix) was missing — the rule was stated but the mechanism behind it was not named, making it harder to reason about edge cases like field reordering or whitespace differences.
 
 ## Feedback Nurye Gave Kirubel on the Explainer
-The "Show It" section used distilgpt2 as a proxy and noted it in a comment, but the explainer didn't explicitly say what would differ at production scale on a T4 with Qwen2.5-0.5B. A reader might question whether the 93% decode ratio holds for a larger, faster GPU. Also, the KV cache paragraph was accurate but brief — the connection between KV cache and the decode cost was not made explicit enough for the reader to understand why the cache matters for the 320ms number specifically.
+The two-cache distinction (KV cache within a call vs prefix cache across calls) was clear and was the strongest part of the explainer. The code output showing 0 tokens reused vs 187 tokens reused made the mechanism concrete and verifiable. The main gap: the explainer did not explicitly state the 5-minute TTL on Anthropic's prefix cache — a reader optimizing a low-frequency agent (calls spaced more than 5 minutes apart) would apply the fix and still see no benefit without knowing this. The thread's tweet 3 assumed the reader knew what "cold cache" means.
 
 ## Revisions Made After the Exchange
-1. Added a sentence in the KV cache section explicitly connecting cache reuse to the per-step cost: without the cache, each decode step would recompute attention over all prior tokens (O(n²)), making the 4.5ms per step a conservative estimate. With the cache, each step only computes attention for the new token against cached K/V pairs.
-2. Added a note in the code block comment clarifying that T4 with Qwen2.5-0.5B runs faster per step (~1ms vs 4.5ms for distilgpt2 on CPU) but the decode-dominance ratio (>90%) holds across hardware because prefill parallelism scales with GPU compute while decode remains sequential.
+1. Added the broken prompt code block alongside the fixed version so the failure mode is visible, not just described.
+2. Added note in the Adjacent Picture section that serialization consistency (whitespace, field order) is as important as positional separation.
+3. Added the Anthropic docs TTL detail to the Pointers section so readers with low-frequency agents know when prefix caching will not help them.
 
 *Written by: [x] Kirubel*
 *Confirmed by other partner: [x] Nurye*
