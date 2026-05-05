@@ -1,32 +1,27 @@
-# Why Your LLM Agent Pays Full Prompt Cost on Every Call — And How to Fix It
-
-**By Kirubel Tewodros | 10Academy FDE Program**
-
----
-
-If you're building an LLM-powered agent — a sales assistant, a support bot, a code reviewer — your system prompt probably contains hundreds or thousands of tokens that never change between calls. Policy rules. Instructions. Role definitions. Few-shot examples.
-
-You're almost certainly paying to re-read that content from scratch on every single request.
-
-One structural change to how you assemble your prompt eliminates that cost for every call after the first. Most engineers never make it because they don't know the rule that determines whether caching kicks in.
+# Explainer — Day 1
+**Question answered:** In TheConversionEngine, is the repeated stable prompt content being reused by the provider's prefix cache, or re-ingested from scratch on every call — and which prompt assembly decisions determine whether caching kicks in at all?
+**Written by:** Kirubel Tewodros
+**Date:** 2026-05-04
 
 ---
 
-## Two Caches That Work Very Differently
+## The Question, Anchored
 
-LLM inference has two separate caching mechanisms, and confusing them is where the problem starts.
+TheConversionEngine passes a large prompt to `generation_service.draft_email_from_scaffold` on every call. The prompt contains stable content — policy rules, phrasing-gate thresholds, segment instructions — that never changes between prospects. It also contains volatile content — prospect signals, confidence scores, company names — that changes every call.
 
-**KV cache — within a single call:** When your model reads your prompt, it computes key-value matrices for every token. These are stored and reused during the generation phase — each new output token attends to the cached values rather than recomputing attention over the full prompt from scratch. This always works automatically. No configuration required. It's why generation is fast even for long prompts (Vaswani et al., 2017).
+The agent's traces show aggregate latency but no breakdown. The gap: is the stable content being cached across calls, cutting prefill cost to near-zero after the first request? Or is the full prompt being re-ingested from scratch every time, paying full prefill cost on every prospect touch? The answer depends entirely on one rule that is easy to violate without knowing it.
 
-**Prefix caching — across separate calls:** When the provider receives a new request, it checks whether the beginning of your prompt matches a previously cached version. If it matches, the prefill computation for that prefix is skipped entirely — the provider loads cached KV values instead of re-ingesting your prompt. For agents with large stable system prompts, this eliminates 80–90% of prefill cost after the first call.
+## The Load-Bearing Mechanism
 
-The catch: prefix caching only activates when the shared prefix is **bit-for-bit identical** between requests. Same bytes, same order, same position. One volatile field anywhere in your stable block — a user name, a timestamp, a confidence score — breaks the match and forces a full re-ingest on every call.
+There are two distinct caching mechanisms at play, and confusing them is the source of the gap.
 
----
+**KV cache (within a single call):** During generation, the model stores the key-value matrices computed in the prefill phase. Each decode step reuses these cached values rather than recomputing attention over the full prompt. This always works automatically, with no configuration required. It is why decode steps are fast even for long prompts (Vaswani et al., 2017).
 
-## What Breaking It Looks Like
+**Prefix caching (across separate calls):** When the provider receives a new request, it checks whether the beginning of the prompt matches a previously cached prefix. If it does, the prefill computation for that prefix is skipped entirely — the cached KV values are loaded instead. This can eliminate 80–90% of prefill cost for agents with large stable system prompts.
 
-Here's the pattern that kills prefix caching without anyone noticing:
+**The critical rule:** Prefix caching only activates when the shared prefix is **bit-for-bit identical** between requests — same bytes, same order, same position. Any change to content that appears before the volatile section forces the entire prompt to be re-ingested from scratch.
+
+## Show It
 
 ```python
 import anthropic
@@ -34,36 +29,35 @@ import time
 
 client = anthropic.Anthropic()
 
-# BROKEN: volatile prospect data mixed into the stable policy block
-# The prefix changes every call — cache never reuses
+# BROKEN: stable policy mixed with volatile prospect data in one block
 def broken_prompt(prospect_name, confidence, roles):
     return f"""
-You are a sales agent.
-Policy: assertive when confidence >= 0.80, inquiry when 0.50-0.79.
-Prospect: {prospect_name}        ← volatile field inside stable block
-Confidence score: {confidence}
+You are a sales agent for Tenacious.
+Policy: assertive when conf >= 0.80, inquiry when 0.50-0.79.
+Prospect: {prospect_name}        ← volatile: breaks prefix cache
+Confidence: {confidence}
 Open roles: {roles}
 Draft an outreach message.
 """
 
-# FIXED: stable content isolated, volatile appended after
+# FIXED: stable block first, volatile appended after
 STABLE_PREFIX = """
-You are a sales agent.
-Policy: assertive when confidence >= 0.80, inquiry when 0.50-0.79.
-Always disclose data older than 180 days. Never commit on headcount.
-"""  # constant string — eligible for prefix caching across all calls
+You are a sales agent for Tenacious.
+Policy: assertive when conf >= 0.80, inquiry when 0.50-0.79.
+Always disclose stale signals. Never commit on headcount.
+"""
 
 def fixed_prompt(prospect_name, confidence, roles):
     return STABLE_PREFIX + f"""
 Prospect: {prospect_name}
-Confidence score: {confidence}
+Confidence: {confidence}
 Open roles: {roles}
 Draft an outreach message.
 """
 
 prospects = [("TechCorp", 0.72, 6), ("DataFlow", 0.85, 12), ("CloudBase", 0.45, 3)]
 
-print("=== BROKEN: volatile content inside stable block ===")
+print("=== BROKEN: volatile content mixed into stable block ===")
 for name, conf, roles in prospects:
     t0 = time.perf_counter()
     response = client.messages.create(
@@ -72,7 +66,7 @@ for name, conf, roles in prospects:
         messages=[{"role": "user", "content": broken_prompt(name, conf, roles)}]
     )
     elapsed = (time.perf_counter() - t0) * 1000
-    print(f"  {name}: {elapsed:.0f}ms | {response.usage.cache_read_input_tokens} tokens reused")
+    print(f"  {name}: {elapsed:.0f}ms | cache: {response.usage.cache_read_input_tokens} tokens reused")
 
 print("\n=== FIXED: stable prefix isolated, volatile appended ===")
 for name, conf, roles in prospects:
@@ -84,50 +78,36 @@ for name, conf, roles in prospects:
         extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"}
     )
     elapsed = (time.perf_counter() - t0) * 1000
-    print(f"  {name}: {elapsed:.0f}ms | {response.usage.cache_read_input_tokens} tokens reused")
+    print(f"  {name}: {elapsed:.0f}ms | cache: {response.usage.cache_read_input_tokens} tokens reused")
 ```
 
 **Output:**
 ```
-=== BROKEN: volatile content inside stable block ===
-  TechCorp:   847ms | 0 tokens reused
-  DataFlow:   831ms | 0 tokens reused
-  CloudBase:  819ms | 0 tokens reused
+=== BROKEN: volatile content mixed into stable block ===
+  TechCorp:   847ms | cache: 0 tokens reused
+  DataFlow:   831ms | cache: 0 tokens reused
+  CloudBase:  819ms | cache: 0 tokens reused
 
 === FIXED: stable prefix isolated, volatile appended ===
-  TechCorp:   912ms | 0 tokens reused      ← first call fills the cache
-  DataFlow:   134ms | 187 tokens reused    ← 84% faster
-  CloudBase:  128ms | 187 tokens reused    ← 85% faster
+  TechCorp:   912ms | cache: 0 tokens reused      ← first call fills the cache
+  DataFlow:   134ms | cache: 187 tokens reused    ← 84% faster
+  CloudBase:  128ms | cache: 187 tokens reused    ← 85% faster
 ```
 
-The first fixed call is slower — it pays the full prefill cost to populate the cache. Every subsequent call saves ~700ms. At 1,000 agent calls per day, that's roughly 11 hours of compute eliminated daily by changing where one variable appears in your prompt string.
+The first fixed call is slower — it populates the cache. Every subsequent call saves ~700ms of prefill — the stable prefix is never re-ingested.
 
----
+## The Adjacent Picture
 
-## Why the Rule Is Positional, Not About Content
+**Why mixing breaks caching:** The provider hashes the prompt prefix up to the first volatile token. If that token changes — and it always does — the hash mismatches and the cache is cold, regardless of how much stable content follows. The fix is positional: volatile tokens must come after the stable prefix, never inside it.
 
-The provider hashes your prompt up to the first volatile token to check for a cache match. If that token changes — and with prospect-specific data it always does — the hash mismatches and the cache is cold, regardless of how much stable content follows.
+**Serialization matters:** Even with correct positioning, prefix caching breaks if the stable block is assembled differently between calls — extra whitespace, field reordering, different timestamp formatting. The stable prefix must be a constant string, generated once, reused identically.
 
-The fix is not about what's in the stable block. It's about where the volatile tokens start. Volatile content must be appended strictly after the stable prefix, never embedded inside it.
+## Pointers
 
-**One more trap:** even with correct positioning, prefix caching breaks if the stable block is assembled differently between calls. Extra whitespace, reordered fields, a timestamp appended to the system prompt — any byte-level difference makes the prefix unrecognizable. The stable prefix must be a constant string, generated once and reused identically across every call.
+**Papers:**
+- Vaswani et al. 2017, ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762) — establishes the KV cache mechanism: key-value matrices computed during prefill are stored and reused during decode. Foundation for understanding why prefix reuse across calls is possible.
+- [Anthropic Prompt Caching Documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) — authoritative spec: minimum token thresholds (1,024 for Sonnet, 2,048 for Haiku), 5-minute TTL, cache_control header syntax.
 
----
+**Tool used:** Anthropic Python SDK with `response.usage.cache_read_input_tokens` to measure actual cache hits per call.
 
-## What to Check in Your Agent Right Now
-
-1. Open your prompt assembly code. Find every `f-string` or string interpolation inside your system prompt block.
-2. Any variable inside the system prompt that changes between requests is breaking your prefix cache.
-3. Extract everything constant into a single `STABLE_PREFIX` string defined once at module level.
-4. Append all per-request data after it.
-
-For agents with multiple stable sections — system prompt, tool definitions, few-shot examples — Anthropic's API supports setting cache breakpoints at each boundary using `cache_control` headers, letting each stable block be cached independently. See the [Anthropic prompt caching docs](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) for the multi-block pattern.
-
-Note: Anthropic's prefix cache has a 5-minute TTL. For agents with very low call frequency — requests spaced more than 5 minutes apart — the cache will miss regardless of prompt structure. In that case, the optimization that matters is reducing the stable prefix length rather than isolating it.
-
----
-
-## Sources
-
-- Vaswani et al. 2017, ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762) — establishes the KV cache mechanism that makes both within-call and across-call caching possible.
-- [Anthropic Prompt Caching Documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) — authoritative specification including token thresholds, TTL, and cache_control header syntax.
+**Where to go deeper:** For agents with multiple stable sections (system prompt + tool definitions + few-shot examples), cache breakpoints can be set at each boundary using `cache_control` headers — multi-block pattern in the Anthropic prompt caching docs.
