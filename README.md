@@ -50,7 +50,7 @@ Each `pair_DAY_N/` folder contains:
 ### Tweet Threads
 | Day | Topic | URL |
 |-----|-------|-----|
-| 1 | Inference-time mechanics — KV cache & prefix caching | [URL — post thread and add here] |
+| 1 | Inference-time mechanics — KV cache & prefix caching | https://x.com/kirubeltewodro2/status/2051613501907403084?s=20 |
 | 2 | [topic] | [URL] |
 | 3 | [topic] | [URL] |
 | 4 | [topic] | [URL] |
