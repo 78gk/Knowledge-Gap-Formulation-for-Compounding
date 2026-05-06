@@ -1,88 +1,79 @@
 # Explainer — Day 2
-**Question answered:** Does telling a model to return JSON actually force it to, or just make JSON more likely? What is the real mechanism?
-**Written by:** Kirubel Tewodros
+**Question answered:** What is the exact mechanism by which an LLM emits a tool call when the API includes `tools=[...]`? Special token or post-hoc JSON parse?
+**Written by:** Kirubel Tewodros (for Natnael Alemseged)
 **Date:** 2026-05-06 (Wednesday)
 
 ---
 
-## The Bug That Started This
+## The Gap
 
-In my Week 11 benchmark pipeline, a DeepSeek V3 judge was supposed to return a structured JSON score with six fields: `coherence`, `verifiability`, `rubric_clarity`, `mean`, `pass`, and `notes`. Most of the time it did. Occasionally it returned something like:
+Natnael's Week 10 Conversion Engine describes itself as an "agent that uses tools" — Cal.com booking, HubSpot CRM updates. But `openrouter_llm.py` (lines 45–70) sends vanilla chat completions with no `tools` parameter. The routing decision — which tool to call — is made by Python keyword matching in `lead_orchestrator.py` line 371 (`_booking_intent`), not by the model. The model is only called for argument generation, not tool selection.
 
-> "Here is my evaluation of the task: { 'coherence': 3, ... }"
-
-That leading sentence broke `json.loads()`. The exception wasn't caught. The task was silently dropped from dataset construction. My fix: add "respond only in JSON" to the system prompt. It seemed to work. I moved on.
-
-What I didn't know: the fix was a patch over a probability, not a solution to a mechanism. Those are completely different things.
+Then τ²-Bench evaluation traces showed `finish_reason: "tool_calls"`. That's a signal the model emitted a tool call. But Natnael's production code never passes `tools=[...]`. The question: what mechanism produces that response, and how is it different from what his system does?
 
 ---
 
-## Two Mechanisms, One Surface
+## What Actually Happens When You Pass `tools=[...]`
 
-When you ask an LLM to return structured output, two fundamentally different things can happen under the hood. They look the same from the outside — the model returns JSON — but they have completely different failure profiles.
+When a request includes `tools=[...]`, the provider does three things before the model ever generates a token:
 
-**Mechanism 1: Instruction Following**
+**Step 1 — Schema injection.** The tools array (function names, descriptions, parameter schemas) is serialized and injected into the model's context. Depending on the provider and model, this happens as a special system message, a formatted block appended to the system prompt, or — for models with purpose-built tool-calling fine-tuning — as a structured input that maps to special tokens in the tokenizer.
 
-The model has been trained, via supervised fine-tuning and RLHF, to comply with user instructions. When it sees "return JSON only," it has learned that the expected output in this context is JSON. So it assigns high probability to JSON tokens and low probability to tokens like "Here is my evaluation."
+**Step 2 — Model generates a structured response.** The model has been fine-tuned to recognize the tool schema in its context and, when the user request matches a tool, emit a response in a specific format. For OpenAI-compatible APIs, that format is:
 
-High probability is not 1.0. Given an unusual input, a long conversation history, or a context that pushes against the instruction, the model can still deviate. The instruction shifts the probability distribution — it does not eliminate alternatives. This is what a system prompt instruction does. It is soft enforcement.
-
-**Mechanism 2: Constrained Decoding**
-
-At every token generation step, the model produces a probability distribution over its full vocabulary — typically 32,000 to 100,000 tokens. In constrained decoding, a grammar or schema is applied at each step to mask out any token that would make the output invalid according to the target format.
-
-If the model is generating a JSON object and the only valid next characters are a key name, a number, `true`, `false`, or `}`, then every other token in the vocabulary gets a probability of exactly zero. The model is physically incapable of generating "Here is my evaluation" — those tokens do not exist in the output space at that step.
-
-This is hard enforcement. The model cannot deviate. It is not that deviating is unlikely — it is that deviating is impossible.
-
----
-
-## What `response_format` Actually Does
-
-In the OpenAI and OpenRouter APIs, `response_format={"type": "json_object"}` activates constrained decoding. It is not a prompt instruction. It is a parameter that changes how token sampling works at inference time.
-
-When this parameter is set, a JSON grammar is loaded, invalid tokens are masked at each decoding step, and output is guaranteed to be valid JSON. Without it — even with a system prompt instruction — you are relying on Mechanism 1. Your output is probably JSON. Not definitely.
-
-The practical consequence: my Week 11 judge pipeline had a non-zero probability of returning freeform text on every single call. Over 260 tasks, that probability compounds. I got lucky that the failure rate was low enough not to corrupt the dataset materially. But it was fragile by design.
-
----
-
-## The Same Physics in Tool Calling
-
-This distinction is exactly what makes LLM agents unreliable when not designed carefully.
-
-When an agent decides whether to call a tool or answer directly, the same two mechanisms apply. `tool_choice="auto"` means the model probabilistically decides — it will usually call the tool when the context suggests it should, but it can skip it. `tool_choice="required"` means constrained decoding: the model must emit a tool call object and is incapable of generating a plain text response instead.
-
-Every unreliable agent behavior that looks like "the model sometimes doesn't call the tool" is almost always this gap: the system was relying on instruction following when it needed constrained decoding.
-
----
-
-## The Fix
-
-```python
-# Before — instruction following (fragile)
-response = client.chat.completions.create(
-    model="deepseek/deepseek-chat-v3-0324",
-    messages=[{"role": "user", "content": judge_prompt}]
-)
-
-# After — constrained decoding (robust)
-response = client.chat.completions.create(
-    model="deepseek/deepseek-chat-v3-0324",
-    messages=[{"role": "user", "content": judge_prompt}],
-    response_format={"type": "json_object"}
-)
+```json
+{
+  "tool_calls": [{
+    "id": "call_abc123",
+    "type": "function",
+    "function": {
+      "name": "book_meeting",
+      "arguments": "{\"lead_email\": \"alex@corp.com\", \"slot\": \"2026-05-07T14:00\"}"
+    }
+  }]
+}
 ```
 
-One parameter. The system prompt instruction about JSON format is now redundant — but harmless.
+**Step 3 — Provider parses and returns structured data.** The provider detects this output pattern and returns it as the `tool_calls` field in the response object, setting `finish_reason: "tool_calls"`.
+
+---
+
+## Special Token or Post-Hoc JSON Parse?
+
+The answer is: **both exist, depending on the model and serving infrastructure.**
+
+**Special tokens** are used by many open-source models. Qwen3 uses `<tool_call>` and `</tool_call>` as dedicated tokens in its tokenizer. Llama 3 uses `<|python_tag|>`. When the model generates one of these tokens, the provider (or local inference engine) treats it as a trigger and extracts the content that follows. The token is never shown in the text output — it's intercepted.
+
+**Post-hoc JSON parsing** is what happens when a model generates JSON-formatted output that matches the expected tool call structure, and the provider parses it after the fact. This is less robust — it depends on the model consistently outputting valid JSON in the right shape — but it works for well-fine-tuned models and is what most OpenRouter-normalized tool calling does for models without dedicated tool tokens.
+
+**For Natnael's stack (OpenRouter):** OpenRouter normalizes tool calling across models. For models with native tool support, it uses the model's special tokens or structured output path. For models without it, it injects the schema as a system prompt and parses the output post-hoc. The `finish_reason: "tool_calls"` in the τ²-Bench traces means the evaluation framework was using the former path — with a model that genuinely emits tool call tokens.
+
+---
+
+## How This Differs From `_safe_parse_json`
+
+Natnael's current system uses `_safe_parse_json` to extract structured arguments from LLM output after the routing decision is already made by Python. Here's the comparison:
+
+| | Native `tools=[...]` | `_safe_parse_json` |
+|---|---|---|
+| **Who decides which tool** | The model (sees schema, chooses) | Python substring matching |
+| **Parse reliability** | Provider-built parser, purpose-trained | Generic JSON fallback, can fail on edge cases |
+| **Refuse/abstain** | `finish_reason: "stop"` = model chose to answer directly | No signal — parse failure looks identical to "chose not to call" |
+| **Latency** | +tokens for schema injection in prefill | No schema overhead |
+| **What breaks silently** | Nothing — failure is explicit | Parse failure can corrupt downstream state |
+
+The critical difference is the **refuse/abstain signal**. With native tool calling, the model can communicate "I understood the request but a tool call isn't appropriate here" via `finish_reason: "stop"`. With `_safe_parse_json`, there is no way to distinguish a model that chose not to call a tool from a model that tried and formatted wrong.
+
+---
+
+## What This Means for Natnael's Architecture
+
+His Week 10 system is not misengineered — it's a deliberate **orchestrated workflow**: Python makes routing decisions, the model fills in arguments. This is often more reliable in production than pure model-driven tool selection, because the routing logic is deterministic.
+
+But the portfolio language "agent that uses tools" misrepresents it. An agent with model-visible tool schema means the model sees the tool definitions and decides whether and which to call. Natnael's system doesn't do that. The honest description is: "orchestrated workflow with LLM-assisted argument generation." That's a valid and often correct architectural choice — it just has a different name.
 
 ---
 
 ## Sources
-- [Efficient Guided Generation for Large Language Models — Willard & Louf, 2023](https://arxiv.org/abs/2307.09702) — canonical paper on grammar-constrained decoding; explains the token masking mechanism
-- [OpenAI Structured Outputs Guide](https://platform.openai.com/docs/guides/structured-outputs) — documents how `response_format` activates schema enforcement vs. instruction-only JSON mode
-
-## Tool Used
-- **Tool:** OpenRouter API (direct call comparison)
-- **What you ran:** Called the same judge prompt with and without `response_format={"type": "json_object"}` on an edge-case input designed to elicit preamble text
-- **What it showed:** Without `response_format`, the model prefixed the JSON with a sentence on ~1 in 8 edge-case calls. With `response_format`, zero deviations across 20 calls.
+- [Toolformer: Language Models Can Teach Themselves to Use Tools — Schick et al., 2023](https://arxiv.org/abs/2302.04761) — original paper establishing the paradigm of models learning to emit tool calls as text sequences during generation
+- [OpenAI Function Calling Documentation](https://platform.openai.com/docs/guides/function-calling) — documents the request/response contract for `tools=[...]` including `finish_reason` semantics and the `tool_calls` response structure
