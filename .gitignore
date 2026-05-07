@@ -15,6 +15,9 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Claude Code local settings
+.claude/
+
 # Research pipeline outputs (large, gitignore results dir)
 .sixth/skills/research/results/
 *.json.bak
