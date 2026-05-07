@@ -5,7 +5,7 @@
 
 ## Question
 
-In Week 11 I trained a LoRA adapter on Qwen2.5-0.5B-Instruct with rank=16, alpha=32, targeting only q_proj and v_proj. I picked those settings from a tutorial — I did not know what any of them actually do. The adapter works well overall, but it gets the phrasing wrong whenever input confidence sits right around 0.50. What do rank, alpha, and target module choice actually control in LoRA training — and which one is most likely causing that boundary failure?
+In Week 11 I fine-tuned Qwen2.5-0.5B-Instruct with LoRA (rank=16, targeting only q_proj and v_proj). The adapter improved overall but consistently failed at the confidence≈0.50 boundary between phrasing tiers — a case the benchmark never caught. How do rank and target-module selection constrain which behavioral corrections are actually representable during fine-tuning, and why does that produce failures near ambiguous boundaries while aggregate scores still look fine?
 
 ## Artifact Connection
 
