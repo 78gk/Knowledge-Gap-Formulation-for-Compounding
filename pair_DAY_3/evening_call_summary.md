@@ -9,11 +9,11 @@ Melaku's question was conceptually solid from the start. Feedback given during s
 
 ## Feedback You Received on Your Explainer
 
-Melaku flagged via Slack that bundling rank, alpha, and target modules as equal hypotheses was too broad. His specific point: alpha controls update magnitude within the subspace, not the subspace itself — so it cannot cause a boundary-specific failure. This was technically correct and led to a sharper question. Feedback on the explainer itself: [to be updated once Melaku sends his review]
+Melaku's explainer confirmed the core mechanism and introduced one precise framing that was missing from the question: the distinction between **optimization failure** (training fell short) and **representational failure** (the architecture cannot express the correction at all). This is the cleaner way to say what the question was circling — the boundary failure at conf≈0.50 is a representational failure, not a training one. He also noted that module restriction affects MLPs and layer norms, not just k_proj, which broadens the limitation slightly beyond what the original question specified.
 
 ## Revisions Made After the Call
 
-Removed alpha from the question's central hypothesis. Reframed from "which of three knobs caused this?" to "how do rank and target-module selection constrain what is representable?" — elevating from config debugging to representational geometry.
+Removed alpha from the question's central hypothesis. Reframed from "which of three knobs caused this?" to "how do rank and target-module selection constrain what is representable?" — elevating from config debugging to representational geometry. The signoff now incorporates the optimization/representational failure distinction from Melaku's explainer.
 
 *Written by: [x] Kirubel Tewodros*
-*Confirmed by other partner: [ ] Yes — pending Melaku's review*
+*Confirmed by other partner: [x] Yes*
