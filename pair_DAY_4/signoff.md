@@ -1,6 +1,6 @@
 # Gap Closure Sign-off — Day 4
 **Asker:** Kirubel Tewodros
-**Explainer written by:** Hiwot Beyene (pending receipt) / Kirubel Tewodros (for Hiwot's question)
+**Explainer written by:** Hiwot Beyene (for Kirubel's question) / Kirubel Tewodros (for Hiwot's question)
 **Date:** 2026-05-08 (Friday)
 
 ## Gap Closure Judgment
@@ -13,4 +13,4 @@ Before today I reported Delta B = +0.1046 (p=0.018, CI [+0.009, +0.205]) and set
 
 ## What Remains Open
 
-None. The mechanism is resolved. The grounding edit to `week-11/memo.md` §9.3 (commit `278b922`) documents the distinction explicitly for any future reviewer. Hiwot's explainer, once received, will be added to the evening summary.
+None. The mechanism is fully resolved. Hiwot's explainer clarified the exact distinction: p-value = evidence against zero; CI = effect-size uncertainty. Her reframing of the +0.009 gate as "pilot threshold, not strong production floor" is the precise language. The grounding edit to `week-11/memo.md` §9.3 (commit `278b922`) documents the p-value/CI distinction; the deployment recommendation should carry a forward note that the gate operates in "pilot mode with live guardrails," not as a standalone production-safety floor.
