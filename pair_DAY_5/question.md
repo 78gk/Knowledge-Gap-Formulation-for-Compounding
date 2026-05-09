@@ -1,7 +1,7 @@
 # Research Question — Day 5
 **Topic:** Production patterns / Inference optimization
 **Date:** 2026-05-09 (Saturday)
-**Partner:** Bereket Haile
+**Format:** Self-directed research day (paired-research portion of program concluded with Day 4; this day rounds out the topic spine independently, with AI as critique partner)
 
 ## Question
 
@@ -14,3 +14,11 @@ Week 11 `run_sealed_ablation.py` and `memo.md` Section 9.2 Cost-Pareto. The late
 ## Why This Gap Matters
 
 If speculative decoding applies to small models, it changes the cost profile of the evaluator at production scale. If it doesn't, understanding why gives me a principled framework for knowing which inference optimization techniques map to which hardware/model-size regimes — a gap that will recur every time I build a new evaluator or deploy a new model.
+
+## Companion Question (Self-Selected for Explainer Practice)
+
+The paired program structure also asked each trainee to write an explainer for a partner's question. With no Day 5 partner, I selected a second high-value gap from my own portfolio to research and write a public explainer on — applying the same diagnostic / grounded / generalizable / resolvable rubric to my own selection:
+
+> "I trained a LoRA SFT adapter on my Week 11 agent and it improved aggregate performance but still showed calibration failures on edge inputs. DPO and ORPO are listed as post-SFT alignment steps. What does DPO actually optimize — how is its training objective different from SFT — and would it have addressed calibration failure specifically, or is it solving a different problem?"
+
+This question grounds in the same Week 11 LoRA artifact (`training/lora_train.py`, `model_card.md` boundary failure caveat) and extends the Day 3 rank-geometry analysis with a complementary lens — preference geometry — making the two-question Day 5 set internally coherent.

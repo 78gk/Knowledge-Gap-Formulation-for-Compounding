@@ -35,4 +35,5 @@ parameter count relative to the decode loop cost.
 Today's research on the prefill/decode split revealed that my original latency explanation was wrong in two ways: (1) I attributed "no meaningful overhead" to adapter weight fusion, when the real reason is that rank-16 LoRA adds only 2 small matrix multiplications per layer per token — negligible against 256 sequential decode steps. (2) I set max_new_tokens=256 without knowing it was the dominant cost driver. Now that I understand decode scales linearly with this parameter, the memo's latency claim becomes a defensible cost model rather than an observed number I couldn't explain.
 
 ## Commit Reference
-[To be added after committing the revised memo]
+
+`4ac63c2` — week-11 repo (main branch)

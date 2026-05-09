@@ -42,4 +42,4 @@ Before today I had the Day 1 recommendation (reduce max_new_tokens) but no princ
 
 ## Commit Reference
 
-[To be added after committing the revised memo]
+`5589bd2` — week-11 repo (main branch)

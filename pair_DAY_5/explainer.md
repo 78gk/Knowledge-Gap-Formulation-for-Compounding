@@ -1,6 +1,6 @@
 # Explainer — Day 5
 **Question answered:** I trained a LoRA SFT adapter on my Week 11 agent and it showed calibration failures on edge inputs. DPO and ORPO are listed as post-SFT alignment steps. What does DPO actually optimize — how is its training objective different from SFT — and would it have addressed calibration failure specifically, or is it solving a different problem?
-**Written by:** Kirubel Tewodros
+**Written by:** Kirubel Tewodros (self-directed research; paired program portion concluded with Day 4)
 **Date:** 2026-05-09 (Saturday)
 
 ---
@@ -29,7 +29,7 @@ For easy cases (high confidence → assertive, very low confidence → abstain),
 
 ## What DPO Optimizes
 
-DPO (Rafailov et al., 2023) takes a different starting point. Instead of maximizing likelihood of demonstrations, it directly optimizes a preference: given an input `x`, make `y_chosen` more likely than `y_rejected`, relative to a reference model.
+DPO (Rafailov et al., 2023) takes a different starting point. Instead of maximizing likelihood of demonstrations, it directly optimizes a preference: given an input `x`, make `y_chosen` more likely than `y_rejected`, relative to a reference model. Crucially, DPO is a **post-SFT step**, not a replacement for SFT — the reference model `p_ref` in the objective below is the SFT checkpoint. Starting DPO directly from the base model risks reward hacking on early preference data, because the reference distribution is too far from sensible behavior.
 
 The DPO training objective:
 

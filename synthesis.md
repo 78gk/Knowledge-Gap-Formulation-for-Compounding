@@ -4,6 +4,12 @@
 
 ---
 
+## Program Structure Note
+
+The cohort's paired-research portion concluded with Day 4 (2026-05-08). Days 1–4 below were paired sessions with assigned cohort partners (Nurye, Natnael, Melaku, Hiwot), each producing two gap-closure exchanges per day. Day 5 was self-directed research (using AI as critique partner) to round out the topic spine, structured against the same four-property rubric (diagnostic, grounded, generalizable, resolvable). Total: ten gaps closed — eight from paired sessions, two from the self-directed extension day.
+
+---
+
 ## The Ten Gaps Closed
 
 ### Gaps I Named (Questions I Asked)
@@ -28,14 +34,14 @@
 - Closed by: Hiwot Beyene
 - What changed: I now understand that p-value and CI answer different questions. p=0.018 tells me the effect is unlikely under the null; the CI tells me how precisely I've measured the size of the effect. A CI spanning 0.196 on n=62 tasks is expected honest uncertainty, not a sign of a weak result. Setting the gate at the lower bound (+0.009) is intentionally conservative: it means the adapter must demonstrate at least the worst plausible effect size. The deployment recommendation now explicitly frames this as "uncertainty-aware" rather than "minimum expected lift."
 
-**Day 5 — Speculative decoding and its applicability regime**
+**Day 5 — Speculative decoding and its applicability regime** *(self-directed research — paired program portion concluded with Day 4)*
 - Gap: I had seen speculative decoding referenced as a production inference optimization without understanding the mechanism or whether it applied to my 0.5B evaluator setup.
-- Closed by: Bereket Haile
+- Closed by: Self-directed research with AI as critique partner
 - What changed: I now understand that speculative decoding requires a small draft model to generate k tokens cheaply, then verifies all k with a single target-model forward pass. The speed gain is real and the output distribution is preserved exactly. But the technique requires a large-enough target model to make the draft-then-verify loop faster than k sequential target steps. At 0.5B, the evaluator IS the small model — there is no cheaper draft. The Day 1 max_new_tokens reduction achieves the same goal by a different path: removing unused decode ceiling. Understanding speculative decoding's regime makes this choice defensible rather than coincidental.
 
 ---
 
-### Gaps I Researched (Questions I Answered)
+### Gaps I Researched (Questions Others Named, or Self-Selected on Day 5)
 
 **Day 1 — For Nurye: Is TheConversionEngine's prefix cache being hit?**
 - What I learned researching it: The KV cache (within a single call) and prefix cache (across calls) are architecturally separate and operate on entirely different conditions. Most engineers conflate them. The prefix cache only activates when the shared prefix is bit-for-bit identical — meaning a single volatile field inside a system prompt block breaks it completely, regardless of how much stable content follows.
@@ -53,7 +59,7 @@
 - What I learned: The decision to pair is structural, not stylistic. When the same evaluation units appear in both conditions (same held-out tasks scored under condition A and condition B), pairing is required — unpairing discards the natural experiment design and inflates variance for no reason. When the metric is a system property with no per-unit pairing structure (latency, cost), paired bootstrap overstates inferential precision. The minimal patch is confirming the resample index is shared, not independent.
 - Key mechanism: At n=22, the difference between paired and unpaired bootstrap is often the difference between a CI that excludes zero and one that doesn't. Per-task difficulty variation in evaluation benchmarks creates high within-pair correlation that pairing exploits; losing it is a real power loss, not a statistical nicety.
 
-**Day 5 — For Bereket: What does DPO optimize and would it have fixed calibration failure?**
+**Day 5 — Self-selected: What does DPO optimize and would it have fixed calibration failure?** *(written as the explainer for a self-selected companion question, applying the same four-property rubric)*
 - What I learned: DPO and SFT solve structurally different problems. SFT maximizes the likelihood of demonstrations with no signal about what to avoid. DPO maximizes a preference: chosen over rejected, relative to a reference model. Its gradient is highest exactly where SFT's gradient is lowest — at the boundary between outputs with similar prior probability. The key diagnostic: DPO fixes preference failures (model has representational capacity but no contrast signal); it cannot fix representational failures (rank too low to express the distinction at all).
 - Key mechanism: The reference model in DPO is the SFT checkpoint. DPO is a post-SFT step — it requires SFT first to stabilize the base. Starting from the base model directly risks reward hacking on early preference data. ORPO integrates both in one pass but sacrifices the explicit β control that makes DPO's update magnitude interpretable.
 

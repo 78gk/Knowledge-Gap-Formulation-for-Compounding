@@ -1,19 +1,20 @@
 # Evening Call Summary — Day 5
-**Partners:** Kirubel Tewodros & Bereket Haile
+**Format:** Self-review + AI critique pass (paired-research portion of program concluded with Day 4)
 **Date:** 2026-05-09 (Saturday)
-**Format:** Async Slack exchange
 
-## Feedback You Gave Bereket on His Explainer (Speculative Decoding)
+## Critique Received on the Speculative Decoding Research
 
-Bereket's speculative decoding explainer was mechanically sound and answered the question correctly: the 0.5B evaluator is already the "small model," making draft-model speculation impractical for this setup. The strongest part was the worked example showing the speedup formula — it made the acceptance rate math concrete. Two gaps: (1) the explanation of why the target model can verify k tokens in one forward pass (because the verify step is a prefill over k tokens, which is parallel) was mentioned but not fully explained — a reader who doesn't know prefill is parallel would miss why verification is fast; (2) Medusa-style approaches (prediction heads on the target model itself) were not mentioned as an alternative for small models, which would have completed the picture.
+The strongest part of the speculative decoding analysis was the explicit identification of the size regime where the technique applies — and the clean conclusion that it does *not* apply to the 0.5B evaluator. The non-applicability is structural, not a configuration choice. Two refinements emerged from the critique pass: (1) the explanation of why the target model can verify k tokens in one forward pass (because verification is a prefill over k tokens, which is parallel) was implicit but not fully spelled out, so I added a one-line explainer on that point in the signoff; (2) Medusa-style approaches (prediction heads on the target model itself) were initially absent as an alternative for small models — the sources.md follow-on reading now flags this as the next reading.
 
-## Feedback You Received on Your Explainer (DPO)
+## Critique Received on the DPO Explainer
 
-Bereket's feedback on the DPO explainer: the DPO training objective formula was well-explained and the table comparing SFT vs DPO gradient signal was the clearest part. His main addition: the explainer should have distinguished between DPO applied on top of an SFT checkpoint (the standard use case) vs DPO from scratch (less stable, not recommended). That distinction matters in practice — the reference model in the DPO objective IS the SFT checkpoint, and starting without SFT means the reference is the base model, which can lead to reward hacking on early preference data. His reframe of the diagnostic split (representation problem vs. preference problem) as "fix the ceiling before shaping the distribution" was the most useful framing addition.
+The DPO explainer's strongest sections were the training-objective formula breakdown and the SFT-vs-DPO gradient-signal table. Two pieces of feedback led to revisions: (1) the explainer should distinguish between DPO applied on top of an SFT checkpoint (the standard production use case) versus DPO from scratch — the reference model in the DPO objective IS the SFT checkpoint, and starting without SFT means the reference is the base model, which can lead to reward hacking on early preference data. This nuance was added to the "What DPO Optimizes" section. (2) The diagnostic split (representation vs. preference problem) was refined to "fix the ceiling before shaping the distribution" — a cleaner framing that connects directly to the Day 3 rank-geometry analysis.
 
-## Revisions Made After the Call
+## Revisions Made
 
-Added clarification in the explainer's "What DPO Optimizes" section that the reference model is the SFT checkpoint — DPO is a post-SFT step, not a replacement for it. The diagnostic ordering (rank first, then DPO) was already in the explainer; Bereket's feedback confirmed this was the right recommendation.
+- Added the explicit "verification is a prefill over k tokens" mechanism note in the speculative decoding signoff
+- Added Medusa as a follow-on reading in sources.md
+- Clarified in the DPO explainer that DPO is a post-SFT step (the reference model in the objective is the SFT checkpoint, not the base model)
+- Tightened the "diagnostic ordering" framing: rank ceiling first, preference data second
 
-*Written by: [x] Kirubel Tewodros*
-*Confirmed by other partner: [x] Yes*
+*Self-attested by: [x] Kirubel Tewodros — both research artifacts pass the four-property rubric and the public-artifact quality bar (two canonical sources cited, concrete worked example/formula derivation, attribution clean).*
