@@ -58,7 +58,7 @@ Each `pair_DAY_N/` folder contains:
 | 2 | Structured output — instruction-following vs constrained decoding | Substack | https://substack.com/profile/496969358-kirubel/note/c-256332814 |
 | 3 | LoRA rank as representational ceiling | Substack | https://kirubel860202.substack.com/p/what-lora-rank-actually-controls |
 | 4 | Bootstrap CIs — what width tells you that a p-value does not | Medium | https://medium.com/@kirutew17654321/what-a-confidence-interval-tells-you-that-a-p-value-doesntand-why-it-changed-my-deployment-gate-6f5ba88f7aa0 |
-| 5 | DPO vs SFT — what each optimizes and when DPO doesn't help | (pending publication) | [URL — pending publication] |
+| 5 | DPO vs SFT — what each optimizes and when DPO doesn't help | Substack | https://kirubel860202.substack.com/p/what-dpo-actually-optimizes-and-why |
 
 ### Tweet Threads
 | Day | Topic | URL |
@@ -67,7 +67,7 @@ Each `pair_DAY_N/` folder contains:
 | 2 | Structured output — instruction-following vs constrained decoding | https://x.com/kirubeltewodro2/status/2053154330803331531?s=20 |
 | 3 | LoRA rank as representational ceiling | https://x.com/kirubeltewodro2/status/2053155119395414409?s=20 |
 | 4 | Bootstrap CIs — what width tells you that a p-value does not | https://x.com/kirubeltewodro2/status/2053155951176237418?s=20 |
-| 5 | DPO vs SFT — what each optimizes and when DPO doesn't help | [URL — pending publication] |
+| 5 | DPO vs SFT — what each optimizes and when DPO doesn't help | https://x.com/kirubeltewodro2/status/2053158082469847371?s=20 |
 
 ---
 

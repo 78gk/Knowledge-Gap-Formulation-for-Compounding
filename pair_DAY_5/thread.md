@@ -61,9 +61,9 @@ For fine-tuned adapters at production scale — ORPO is worth knowing.
 **Tweet 6 (link):**
 Full explainer — DPO objective, why it fires at boundaries not broad cases, how it connects to LoRA rank constraints, and the ORPO alternative:
 
-INSERT_BLOG_URL
+https://kirubel860202.substack.com/p/what-dpo-actually-optimizes-and-why
 
 #MachineLearning #DPO #RLHF #FineTuning #LLM
 
 ---
-*Each tweet must stand alone. Replace INSERT_BLOG_URL before publishing.*
+*Published: 2026-05-09 — https://x.com/kirubeltewodro2/status/2053158082469847371*
