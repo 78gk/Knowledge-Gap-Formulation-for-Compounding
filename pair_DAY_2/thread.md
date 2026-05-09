@@ -73,7 +73,7 @@ One parameter. Not three paragraphs in the system prompt.
 Understanding this mechanism tells you exactly where the lever is in any pipeline that acts on structured LLM output.
 
 Full explainer (with the Week 11 artifact context):
-[INSERT_BLOG_URL]
+https://substack.com/profile/496969358-kirubel/note/c-256332814
 
 ---
-*Replace INSERT_BLOG_URL before publishing.*
+*Published: 2026-05-08 — https://x.com/kirubeltewodro2/status/2053154330803331531*

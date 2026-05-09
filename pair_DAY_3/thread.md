@@ -61,9 +61,9 @@ Benchmark first. Then check the edges.
 **Tweet 6 (link):**
 Full explainer — the mechanism, why distribution shift makes it worse, and what I'd change in my own config:
 
-INSERT_BLOG_URL
+https://kirubel860202.substack.com/p/what-lora-rank-actually-controls
 
 #MachineLearning #LoRA #Finetuning #LLM
 
 ---
-*Each tweet must stand alone. Replace INSERT_BLOG_URL before publishing.*
+*Published: 2026-05-08 — https://x.com/kirubeltewodro2/status/2053155119395414409*

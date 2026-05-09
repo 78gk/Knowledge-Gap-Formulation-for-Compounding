@@ -60,9 +60,9 @@ Set deployment gates from the CI lower bound intentionally — not because it's 
 **Tweet 6 (link):**
 Full explainer — the mechanism, the decision table for bootstrap policy, and what "statistically honest" evaluation actually requires:
 
-INSERT_BLOG_URL
+https://medium.com/@kirutew17654321/what-a-confidence-interval-tells-you-that-a-p-value-doesntand-why-it-changed-my-deployment-gate-6f5ba88f7aa0
 
 #MachineLearning #Evaluation #Statistics #LLM
 
 ---
-*Each tweet must stand alone. Replace INSERT_BLOG_URL before publishing.*
+*Published: 2026-05-08 — https://x.com/kirubeltewodro2/status/2053155951176237418*
